@@ -1,0 +1,33 @@
+#######################################
+# Syntax Coloring Map For RS_JSON
+#######################################
+
+#######################################
+# Datatypes (KEYWORD1)
+#######################################
+
+RS_JSON	KEYWORD1
+
+#######################################
+# Methods and Functions (KEYWORD2)
+#######################################
+
+MASTER	KEYWORD2
+SLAVE	KEYWORD2
+CallbackType	KEYWORD2
+begin	KEYWORD2
+sendMessage	KEYWORD2
+listen	KEYWORD2
+ping	KEYWORD2
+discoverDevices	KEYWORD2
+setCallback	KEYWORD2
+calculateChecksum	KEYWORD2
+processMessage	KEYWORD2
+
+#######################################
+# Instances (KEYWORD2)
+#######################################
+
+#######################################
+# Constants (LITERAL1)
+#######################################

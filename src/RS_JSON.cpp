@@ -1,11 +1,11 @@
 #include "RS_JSON.h"
 
-
 RS_JSON::RS_JSON(Mode mode, Stream& serialPort, const String& deviceAddress)
     : mode(mode), serial(serialPort), address(deviceAddress) {
 }
 
 void RS_JSON::begin() {
+    // Initialization code can be added here if needed
 }
 
 String RS_JSON::calculateChecksum(const String& message) {
@@ -13,16 +13,16 @@ String RS_JSON::calculateChecksum(const String& message) {
     for (char c : message) {
         sum += c;
     }
-    // Изчисляваме сумата по модул 256
+    // Calculate the sum modulo 256
     int checksum = sum % 256;
-    // Форматираме като шестнадесетичен низ с два символа
+    // Format as a two-character hexadecimal string
     String hexChecksum = String(checksum, HEX);
-    // Уверяваме се, че е с два символа, добавяйки нули отпред, ако е необходимо
+    // Ensure it is two characters long by padding with zeros if necessary
     if (hexChecksum.length() < 2) {
         hexChecksum = "0" + hexChecksum;
     }
-    hexChecksum.toUpperCase(); // Преобразуваме в главни букви
-    return hexChecksum; // Връщаме шестнадесетичния низ
+    hexChecksum.toUpperCase(); // Convert to uppercase
+    return hexChecksum; // Return the hexadecimal string
 }
 
 void RS_JSON::sendMessage(const String& address, const String& command, const JsonObject& data) {
@@ -45,9 +45,17 @@ void RS_JSON::sendMessage(const String& address, const String& command, const Js
 }
 
 void RS_JSON::listen() {
-    if (serial.available()) {
-        String message = serial.readStringUntil('\n');
-        processMessage(message);
+    while (serial.available()) {
+        char c = serial.read();
+
+        // Accumulate characters in the buffer
+        if ((c != '\n') || (c != '\r')) {
+            buffer += c;
+        } else {
+            // End of message
+            processMessage(buffer);
+            buffer.clear();  // Clear the buffer
+        }
     }
 }
 
@@ -61,7 +69,11 @@ void RS_JSON::processMessage(const String& message) {
     // Validate checksum
     if (calculateChecksum(jsonPart) != checksumPart) {
         // Invalid checksum, discard message
-        Serial.println("Invalid checksum");
+        Serial.print("Invalid checksum '");
+        Serial.println(jsonPart);
+        Serial.print("' | '");
+        Serial.print(checksumPart);
+        Serial.println("'");
         return;
     }
 
@@ -69,7 +81,7 @@ void RS_JSON::processMessage(const String& message) {
     DeserializationError error = deserializeJson(doc, jsonPart);
 
     if (!error) {
-        String receivedAddress = doc["address"]; // Използваме "receivedAddress" за да не объркаме с член-променливата "address"
+        String receivedAddress = doc["address"]; // Use "receivedAddress" to avoid confusion with member variable "address"
         String command = doc["command"];
         JsonObject data = doc["data"];
 

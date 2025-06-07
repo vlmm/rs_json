@@ -2,8 +2,8 @@
 #define RS_JSON_H
 
 #include <Arduino.h>
-#include <ArduinoJson.h> // Предполагам, че използвате ArduinoJson библиотека
-#include <functional>    // За std::function
+#include <ArduinoJson.h>
+#include <functional>
 
 class RS_JSON {
 public:
@@ -39,6 +39,7 @@ private:
     int baudRate;                 // Communication baud rate
     String address;               // Device's own address
     CallbackType callback_;       // Registered callback function
+    String buffer;
 
     // Calculates a simple checksum for the given message
     String calculateChecksum(const String& message);

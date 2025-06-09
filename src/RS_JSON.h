@@ -5,6 +5,7 @@
 #include <ArduinoJson.h>
 #include <functional>
 
+
 class RS_JSON {
 public:
     enum Mode { MASTER, SLAVE };
@@ -13,10 +14,13 @@ public:
     using CallbackType = std::function<void(const char*)>;
 
     // Constructor: Initializes the communication mode, serial port, baud rate, and device address
-    RS_JSON(Mode mode, Stream& serialPort, const String& deviceAddress);
+    RS_JSON(Mode mode, HardwareSerial& serialPort, const String& deviceAddress);
+
+    RS_JSON(Mode mode, HardwareSerial& serialPort, const String& deviceAddress, uint8_t dePin);
 
     // Initializes serial communication
     void begin();
+    void flush();
 
     // Sends a JSON-formatted message to a specified address with a command and data
     void sendMessage(const String& address, const String& command, const JsonObject& data);
@@ -35,17 +39,22 @@ public:
 
 private:
     Mode mode;                    // Operating mode (MASTER or SLAVE)
-    Stream& serial;               // Reference to the serial port
+    HardwareSerial& serial;               // Reference to the serial port
     int baudRate;                 // Communication baud rate
     String address;               // Device's own address
     CallbackType callback_;       // Registered callback function
     String buffer;
+    uint8_t dePin;
+    bool useDe;
 
     // Calculates a simple checksum for the given message
     String calculateChecksum(const String& message);
 
     // Parses and processes a received message
     void processMessage(const String& message);
+
+    void startTransmission();
+    void endTransmission();
 };
 
 #endif // RS_JSON_H

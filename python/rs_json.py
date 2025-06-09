@@ -29,7 +29,7 @@ class RSJSON:
         full_message = f"{message_str}{checksum:02X}\n"
         self.serial.write(full_message.encode('utf-8'))
         self.last_send_time = time.time()
-        self.listen()
+        return self.listen()
 
     def listen(self, timeout=0.5):
         """Waits for a response for a specified timeout (blocking), returns data or None."""
@@ -80,20 +80,24 @@ class RSJSON:
 if __name__ == "__main__":
     def handle_message(data):
         pass
-        # print(f"Callback received data: {data}")
+        #print(f"Callback received data: {data}")
 
     rs_json = None  # Initialize rs_json to None for the finally block
 
     try:
         ports = list(serial.tools.list_ports.comports())
         if ports:
-            print(f"Using serial port: {ports[0].device}")
-            rs_json = RSJSON(ports[0].device, 115200)
+            print(f"Using serial port: {ports[1].device}")
+            rs_json = RSJSON(ports[1].device, 9600)
         else:
             raise Exception("No serial ports found.")
 
         rs_json.set_callback(handle_message)
         rs_json.discover_devices()
+        rs_json.send_message("1", "ping", {})
+        rs_json.send_message("1", "reset", {})  # Reset memory
+        rs_json.send_message("1", "enable", {})  # Enable acceptor
+        rs_json.send_message("1", "lcd", {"1": datetime.now().strftime("%H:%M:%S").center(16), "2": "".center(16)})
 
         last_read_command_time = time.time()
         read_command_interval = 1.0  # Send "read" command every 1 second
@@ -102,8 +106,12 @@ if __name__ == "__main__":
             while True:
                 current_time = time.time()
                 if current_time - last_read_command_time >= read_command_interval:
-                    rs_json.send_message("1", "ping", {})
+                    counter += 1
+                    rs_json.send_message("1", "read", {})
+                    #rs_json.send_message("1", "stats", {})
+                    #rs_json.send_message("1", "lcd", {"1": datetime.now().strftime("%H:%M:%S").center(16), "2": str(counter).center(16)})
                     last_read_command_time = current_time
+
                 time.sleep(0.01)  # Small delay to prevent busy-waiting and allow other operations
         except KeyboardInterrupt:
             rs_json.send_message("1", "disable", {})  # Disable acceptor

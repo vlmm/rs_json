@@ -1,52 +1,73 @@
+/**
+ * RS_JSON — Master (Client) Basic Example
+ *
+ * Demonstrates ping and device discovery over RS-485.
+ * Uses HardwareSerial (Serial1) for RS-485 communication and
+ * Serial (USB) for debug output.
+ *
+ * Wiring (RS-485 half-duplex with DE/RE pin):
+ *   Serial1 TX → RS-485 DI
+ *   Serial1 RX → RS-485 RO
+ *   Pin 4      → RS-485 DE/RE (high = transmit, low = receive)
+ *
+ * For reliable request/data/ack, see examples/reliable_delivery/master_reliable.ino
+ */
+
 #include <Arduino.h>
 #include <ArduinoJson.h>
 #include "RS_JSON.h"
-#include <SoftwareSerial.h>
 
-SoftwareSerial softSerial(10, 11); // RX, TX
+// RS_JSON master on Serial1, device address "master_01", DE/RE on pin 4
+RS_JSON master(RS_JSON::MASTER, Serial1, "master_01", 4);
 
-// Initialize RS_JSON as the master device
-RS_JSON master(RS_JSON::MASTER, softSerial, 9600);
-
-// Callback function for incoming messages
-void handleMessage(const char* jsonMessage) {
-    StaticJsonDocument<200> doc;
-    DeserializationError error = deserializeJson(doc, jsonMessage);
-
+// Called by the library for every message that passes checksum validation
+// and is NOT addressed to this device (i.e. responses from slaves).
+void handleMessage(const char* jsonStr) {
+    StaticJsonDocument<300> doc;
+    DeserializationError error = deserializeJson(doc, jsonStr);
     if (error) {
-        Serial.println("Received invalid JSON");
+        Serial.println("JSON parse error in callback");
         return;
     }
 
-    String command = doc["command"];
+    String command = doc["command"].as<String>();
+    String from    = doc["from"].as<String>();
     JsonObject data = doc["data"];
 
     if (command == "pong") {
-        Serial.println("Received PONG response from device.");
+        Serial.print("PONG from ");
+        Serial.println(from);
+
     } else if (command == "discover_response") {
-        Serial.println("Discovered device:");
-        serializeJsonPretty(data, Serial);
+        Serial.print("Discovered device from ");
+        Serial.print(from);
+        Serial.print(": ");
+        serializeJson(data, Serial);
         Serial.println();
+
     } else {
-        Serial.print("Received unknown command: ");
-        Serial.println(command);
+        Serial.print("Unknown command '");
+        Serial.print(command);
+        Serial.print("' from ");
+        Serial.println(from);
     }
 }
 
 void setup() {
-    Serial.begin(9600);             // For debugging
-    master.begin();                 // Start communication
-    master.setCallback(handleMessage); // Register the callback function
+    Serial.begin(115200);   // USB debug output
+    Serial1.begin(9600);    // RS-485 bus
+    master.begin();
+    master.setCallback(handleMessage);
 
-    Serial.println("MASTER device ready.");
+    Serial.println("MASTER ready.");
 
-    // Send a ping to a specific device
+    // Send a ping to a specific slave
     master.ping("slave_01");
 
-    // Send a broadcast discover message
+    // Broadcast a discovery request to all devices on the bus
     master.discoverDevices();
 }
 
 void loop() {
-    master.listen(); // Listen for responses from devices
+    master.listen();  // process any incoming bytes
 }

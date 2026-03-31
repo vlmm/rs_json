@@ -24,7 +24,7 @@ RS_JSON slave(RS_JSON::SLAVE, Serial1, "slave_01", 4);
 // Called by the library to fill in the current data before sending a response.
 // Place the latest sensor readings into `out`.
 void provideData(JsonObject& out) {
-    out["sensor"] = analogRead(A0) * (5.0f / 1023.0f);  // example: ADC voltage (assumes 5 V AREF)
+    out["sensor"] = analogRead(A0) * (5.0f / 1023.0f);  // ADC voltage — adjust 5.0f to 3.3f for 3.3 V boards
     out["uptime"] = millis() / 1000UL;
 }
 

@@ -1,31 +1,28 @@
 #include <Arduino.h>
 #include <ArduinoJson.h>
 #include "RS_JSON.h"
-#include <SoftwareSerial.h>
 
-SoftwareSerial softSerial(10, 11); // RX, TX
+// Initialize RS_JSON as master with address "master"
+RS_JSON master(RS_JSON::MASTER, Serial1, "master");
 
-// Initialize RS_JSON as the master device
-RS_JSON master(RS_JSON::MASTER, softSerial, 9600);
-
-// Callback function for incoming messages
-void handleMessage(const char* jsonMessage) {
-    StaticJsonDocument<200> doc;
-    DeserializationError error = deserializeJson(doc, jsonMessage);
-
-    if (error) {
+/**
+ * Called when a new (non-duplicate) response arrives from a slave.
+ * Receiving the callback means MASTER has already sent an ACK automatically.
+ */
+void handleResponse(const char* jsonMessage) {
+    StaticJsonDocument<256> doc;
+    if (deserializeJson(doc, jsonMessage) != DeserializationError::Ok) {
         Serial.println("Received invalid JSON");
         return;
     }
 
-    String command = doc["command"];
-    JsonObject data = doc["data"];
+    const char* command = doc["command"] | "";
 
-    if (command == "pong") {
+    if (strcmp(command, "pong") == 0) {
         Serial.println("Received PONG response from device.");
-    } else if (command == "discover_response") {
+    } else if (strcmp(command, "discover_response") == 0) {
         Serial.println("Discovered device:");
-        serializeJsonPretty(data, Serial);
+        serializeJsonPretty(doc["data"], Serial);
         Serial.println();
     } else {
         Serial.print("Received unknown command: ");
@@ -33,20 +30,25 @@ void handleMessage(const char* jsonMessage) {
     }
 }
 
+// Simple poll scheduler: track last-poll time per device
+static unsigned long lastPollTime = 0;
+static const unsigned long POLL_INTERVAL = 2000; // poll every 2 s
+
 void setup() {
-    Serial.begin(9600);             // For debugging
-    master.begin();                 // Start communication
-    master.setCallback(handleMessage); // Register the callback function
-
+    Serial.begin(9600);    // debug port
+    Serial1.begin(9600);   // RS485 port
+    master.begin();
+    master.setCallback(handleResponse);
+    master.setRequestTimeout(500);  // 500 ms response timeout
     Serial.println("MASTER device ready.");
-
-    // Send a ping to a specific device
-    master.ping("slave_01");
-
-    // Send a broadcast discover message
-    master.discoverDevices();
 }
 
 void loop() {
-    master.listen(); // Listen for responses from devices
+    // Poll slave_01 periodically; listen() handles the response and sends ACK.
+    unsigned long now = millis();
+    if (now - lastPollTime >= POLL_INTERVAL) {
+        lastPollTime = now;
+        master.ping("slave_01");
+    }
+    master.listen();
 }

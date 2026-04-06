@@ -266,6 +266,7 @@ if __name__ == "__main__":
     try:
         ports = list(serial.tools.list_ports.comports())
         if ports:
+            # Use the first available port; adjust the index if a specific port is needed.
             print(f"Using serial port: {ports[0].device}")
             rs_json = RSJSON(ports[0].device, 9600, address="master", mode="master")
         else:

@@ -1,4 +1,5 @@
 #include "RS_JSON.h"
+#include <string.h>
 
 // ── Construction ──────────────────────────────────────────────────────────────
 
@@ -7,14 +8,18 @@ RS_JSON::RS_JSON(Mode mode, HardwareSerial& serialPort, const String& deviceAddr
       dePin_(0), useDe_(false),
       lastRequestId_(0), lastSentId_(0), currentRequestId_(0),
       requestIdCounter_(0), requestSentAt_(0), requestTimeout_(1000)
-{}
+{
+    memset(lastReceivedIds_, 0, sizeof(lastReceivedIds_));
+}
 
 RS_JSON::RS_JSON(Mode mode, HardwareSerial& serialPort, const String& deviceAddress, uint8_t dePin)
     : mode_(mode), serial_(serialPort), address_(deviceAddress),
       dePin_(dePin), useDe_(true),
       lastRequestId_(0), lastSentId_(0), currentRequestId_(0),
       requestIdCounter_(0), requestSentAt_(0), requestTimeout_(1000)
-{}
+{
+    memset(lastReceivedIds_, 0, sizeof(lastReceivedIds_));
+}
 
 // ── Public API ────────────────────────────────────────────────────────────────
 
@@ -107,7 +112,7 @@ void RS_JSON::discoverDevices() {
 
 String RS_JSON::calculateChecksum(const String& message) {
     int sum = 0;
-    for (char c : message) sum += (uint8_t)c;
+    for (char c : message) sum += static_cast<uint8_t>(c);
     int checksum = sum % 256;
     String hex = String(checksum, HEX);
     if (hex.length() < 2) hex = "0" + hex;
@@ -196,11 +201,35 @@ void RS_JSON::processMessage(const String& message) {
         if (pendingDevice_.length() > 0 && strcmp(src, pendingDevice_.c_str()) != 0) return;
 
         String srcStr = String(src);
-        auto   it     = lastReceivedIds_.find(srcStr);
-        bool   isDup  = (it != lastReceivedIds_.end() && it->second == id);
+
+        // Look up (or insert) this device in the fixed-size table
+        int freeSlot = -1;
+        int foundSlot = -1;
+        for (int i = 0; i < MAX_TRACKED_DEVICES; ++i) {
+            if (lastReceivedIds_[i].valid) {
+                if (strncmp(lastReceivedIds_[i].address, src, sizeof(lastReceivedIds_[i].address) - 1) == 0) {
+                    foundSlot = i;
+                    break;
+                }
+            } else if (freeSlot < 0) {
+                freeSlot = i;
+            }
+        }
+
+        bool isDup = false;
+        if (foundSlot >= 0) {
+            isDup = (lastReceivedIds_[foundSlot].lastId == id);
+        }
 
         if (!isDup) {
-            lastReceivedIds_[srcStr] = id;
+            // Record the new ID
+            int slot = (foundSlot >= 0) ? foundSlot : freeSlot;
+            if (slot >= 0) {
+                strncpy(lastReceivedIds_[slot].address, src, sizeof(lastReceivedIds_[slot].address) - 1);
+                lastReceivedIds_[slot].address[sizeof(lastReceivedIds_[slot].address) - 1] = '\0';
+                lastReceivedIds_[slot].lastId = id;
+                lastReceivedIds_[slot].valid  = true;
+            }
             if (callback_) callback_(jsonPart.c_str());
         }
 

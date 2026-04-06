@@ -4,7 +4,6 @@
 #include <Arduino.h>
 #include <ArduinoJson.h>
 #include <functional>
-#include <map>
 
 /**
  * RS_JSON — RS485 JSON protocol library (MASTER / SLAVE FSM).
@@ -101,11 +100,20 @@ private:
     String   currentRequestSrc_;  // Source address of the request being processed
 
     // ── MASTER state ──────────────────────────────────────────────────────────
-    uint32_t     requestIdCounter_;                  // Monotonic counter for request IDs
-    String       pendingDevice_;                     // Slave we are currently waiting on
-    unsigned long requestSentAt_;                    // millis() when the request was sent
-    unsigned long requestTimeout_;                   // Timeout in ms
-    std::map<String, uint32_t> lastReceivedIds_;     // Per-device last received response ID
+    uint32_t     requestIdCounter_;          // Monotonic counter for request IDs
+    String       pendingDevice_;             // Slave we are currently waiting on
+    unsigned long requestSentAt_;            // millis() when the request was sent
+    unsigned long requestTimeout_;           // Timeout in ms
+
+    // Per-device last received response ID.
+    // Fixed-size array avoids heap fragmentation on memory-constrained MCUs.
+    static const uint8_t MAX_TRACKED_DEVICES = 8;
+    struct DeviceRecord {
+        char     address[32];
+        uint32_t lastId;
+        bool     valid;
+    };
+    DeviceRecord lastReceivedIds_[MAX_TRACKED_DEVICES];
 
     // ── Helpers ───────────────────────────────────────────────────────────────
     String calculateChecksum(const String& message);

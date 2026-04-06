@@ -5,43 +5,52 @@
 ```mermaid
 flowchart TD
     A[Start] --> B[RS_JSON Constructor]
-    B --> C{Mode == MASTER?}
-    C -->|Yes| D[Skip message if address is for this device]
-    C -->|No| E[Process message if address matches or is broadcast]
-    D --> F[Send message to serial]
-    E --> F
-    F --> G[Calculate checksum]
-    G --> H[Append checksum to message]
+    B --> R[setCallback<callback>]
+    R --> C{Mode}
+    C -->|MASTER| G[Master - Listen for incoming response]
+    
+    D[Master - Send Message Request]
+    C -->|SLAVE| E[Slave FSM]
+    
+    D --> H[Construct Message with checksum]
     H --> I[Send message via serial]
-    I --> J[Listen for incoming messages]
-    J --> K{Message available?}
-    K -->|Yes| L[Process message]
-    K -->|No| J
-    L --> M[Extract address, command, and data from JSON]
-    M --> N{Checksum valid?}
-    N -->|No| O[Discard message]
-    N -->|Yes| P[Handle command or callback]
-    O --> J
-    P --> J
-    F --> Q[Wait for next message]
-    Q --> J
-    subgraph Ping and Discover
-        P1[Ping] --> P2[Send ping to address]
-        P3[Discover] --> P4[Send discover message]
-    end
-    A --> B
+    I --> G
+
+    G --> J{Message received?}
+    J -->|No| G
+    J -->|Yes| K[Process Message <Checksum validation>]
+    K --> L{Checksum Valid?}
+    L -->|No| M[Discard message and print error]
+    L -->|Yes| N[Parse JSON message]
+    M --> G
+    
+    N --> O{Is address != own address?}
+    O -->|Yes| P[Trigger callback with received message]
+    O -->|No| Q[Ignore message]
+    P --> G
+    Q --> G
 ```
+### Какво е показва диаграмата:
 
-### Обяснение на контролната диаграма:
+1. **RS_JSON Constructor**: Тук започва процесът с инициализацията на обекта. След това се задава **callback**.
 
-1. **Конструктори**: Има два конструктора за инициализация на обекта `RS_JSON`. В зависимост от режима на работа и дали е зададен `dePin`, ще се използва различен конструктор.
+2. **Избор на режим (MASTER или SLAVE)**:
 
-2. **Основен цикъл**: В метода `listen` се проверява дали има нови съобщения в серийния порт. Ако има, те се обработват и се валидират.
+   * **MASTER** режимът започва с **слушане за отговори** (`Master - Listen for incoming response`).
+   * **SLAVE** режимът преминава в състояние за обработка на съобщения чрез **Slave FSM**, което е подходящо за логиката на устройството в този режим.
 
-3. **Валидация на сума**: При всяко получаване на съобщение се изчислява контролна сума и се сравнява с последните два символа от съобщението.
+3. **MASTER режим**:
 
-4. **Изпращане на съобщения**: Когато е необходимо да се изпрати съобщение, се създава JSON обект, добавя се контролна сума и съобщението се изпраща през серийния порт. В режим MASTER се изпращат съобщения без да се обработват тези, адресирани до устройството.
+   * Ако **MASTER** трябва да изпрати съобщение, започва с **изпращане на съобщение** (`Master - Send Message Request`), след което съобщението се изгражда и изпраща със съответната контролна сума.
+   * След изпращането, **MASTER** отново влиза в **слушане за отговори** (`Listen for incoming response`).
 
+4. **Обработка на съобщение в MASTER режим**:
+
+   * Когато **MASTER** получи съобщение, първо се проверява дали е валидно чрез **контролна сума**.
+   * Ако контролната сума не съвпада, съобщението се изхвърля с **грешка**.
+   * Ако е валидно, съобщението се парсира и проверява дали е адресирано към устройството.
+     * Ако **адресът съвпада** със собствения, се извиква **callback**.
+     * Ако **адресът не съвпада**, съобщението се игнорира.
 ---
 
 ### Контролен поток за режим **SLAVE**:

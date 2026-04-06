@@ -31,11 +31,15 @@ import serial.tools.list_ports
 import time
 from datetime import datetime
 
+SERIAL_PORT_INDEX = 1
+SERIAL_SPEED = 19200
+
 
 class RSJSON:
     BROADCAST = "broadcast"
 
-    def __init__(self, port, baudrate, address="master", mode="master", timeout=1.0):
+    def __init__(self, address: str, port: str, baudrate: int = SERIAL_SPEED,
+                 mode: str = "master", timeout: float = 0.5):
         """
         Parameters
         ----------
@@ -266,8 +270,9 @@ if __name__ == "__main__":
     try:
         ports = list(serial.tools.list_ports.comports())
         if ports:
-            print(f"Using serial port: {ports[0].device}")
-            rs_json = RSJSON(ports[0].device, 9600, address="master", mode="master")
+            # Use the first available port; adjust the index if a specific port is needed.
+            print(f"Using serial port: {ports[SERIAL_PORT_INDEX].device}")
+            rs_json = RSJSON("master", ports[SERIAL_PORT_INDEX].device)
         else:
             raise Exception("No serial ports found.")
 

@@ -51,7 +51,7 @@ flowchart TD
     A[Start] --> B[RS_JSON Constructor]
     B --> C{Mode == SLAVE?}
     C -->|Yes| D[Listen for incoming messages]
-    C -->|No| F[Skip (MASTER mode)]
+    C -->|No| F[Skip MASTER mode]
     D --> G{Message available?}
     G -->|Yes| H[Process message]
     G -->|No| D

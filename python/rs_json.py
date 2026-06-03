@@ -31,7 +31,7 @@ import serial.tools.list_ports
 import time
 from datetime import datetime
 
-SERIAL_PORT_INDEX = 1
+SERIAL_PORT_INDEX = 0
 SERIAL_SPEED = 19200
 
 
@@ -105,7 +105,8 @@ class RSJSON:
         }
         msg_str = json.dumps(msg, separators=(',', ':'))
         checksum = self.calculate_checksum(msg_str)
-        full = f"{msg_str}{checksum:02X}\n"
+        full = f"{msg_str}{checksum:02X}"
+        print(full.encode('utf-8'))
         self.serial.write(full.encode('utf-8'))
         self._pending_device = dst
         self._request_sent_at = time.time()
@@ -143,6 +144,7 @@ class RSJSON:
         if self.serial.in_waiting > 0:
             line = self.serial.readline().decode('utf-8', errors='replace').strip()
             if line:
+                print(line)
                 return self._process_message(line)
         return None
 
@@ -171,6 +173,7 @@ class RSJSON:
         return None
 
     def _process_message(self, message):
+        print(message)
         if len(message) < 3:
             return None
 
@@ -267,43 +270,43 @@ if __name__ == "__main__":
 
     rs_json = None
 
+    ports = list(serial.tools.list_ports.comports())
+    if ports:
+        # Use the first available port; adjust the index if a specific port is needed.
+        print(f"Using serial port: {ports[SERIAL_PORT_INDEX].device}")
+        rs_json = RSJSON("master", ports[SERIAL_PORT_INDEX].device)
+    else:
+        raise Exception("No serial ports found.")
+
+    rs_json.set_callback(handle_message)
+    rs_json.discover_devices()
+    time.sleep(1)
+    rs_json.send_request("8", "read", {})
+    time.sleep(1)
+    rs_json.send_request("8", "reset", {})
+    time.sleep(1)
+    rs_json.send_request("8", "enable", {})
+    time.sleep(1)
+    rs_json.send_request("8", "lcd", {
+        "8": datetime.now().strftime("%H:%M:%S").center(16),
+        "8": "".center(16),
+    })
+    time.sleep(1)
+
+    last_read_command_time = time.time()
+    read_command_interval = 1.0
     try:
-        ports = list(serial.tools.list_ports.comports())
-        if ports:
-            # Use the first available port; adjust the index if a specific port is needed.
-            print(f"Using serial port: {ports[SERIAL_PORT_INDEX].device}")
-            rs_json = RSJSON("master", ports[SERIAL_PORT_INDEX].device)
-        else:
-            raise Exception("No serial ports found.")
-
-        rs_json.set_callback(handle_message)
-        rs_json.discover_devices()
-        rs_json.send_request("1", "ping", {})
-        rs_json.send_request("1", "reset", {})
-        rs_json.send_request("1", "enable", {})
-        rs_json.send_request("1", "lcd", {
-            "1": datetime.now().strftime("%H:%M:%S").center(16),
-            "2": "".center(16),
-        })
-
-        last_read_command_time = time.time()
-        read_command_interval = 1.0
-        try:
-            counter = 0
-            while True:
-                current_time = time.time()
-                if current_time - last_read_command_time >= read_command_interval:
-                    counter += 1
-                    rs_json.send_request("1", "read", {})
-                    last_read_command_time = current_time
-                time.sleep(0.01)
-        except KeyboardInterrupt:
-            rs_json.send_request("1", "disable", {})
-            print("Program terminated by user.")
-    except Exception as e:
-        print(f"An error occurred: {e}")
-    finally:
-        if rs_json and rs_json.serial.is_open:
-            print("Closing serial port.")
-            rs_json.serial.flush()
-            rs_json.serial.close()
+        counter = 0
+        while True:
+            current_time = time.time()
+            if current_time - last_read_command_time >= read_command_interval:
+                counter += 1
+                rs_json.send_request("8", "lcd", {
+                    "1": datetime.now().strftime("%H:%M:%S").center(16),
+                    "2": "".center(16),
+                })
+                last_read_command_time = current_time
+            time.sleep(0.01)
+    except KeyboardInterrupt:
+        rs_json.send_request("8", "disable", {})
+        print("Program terminated by user.")

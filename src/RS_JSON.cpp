@@ -34,7 +34,7 @@ void RS_JSON::setRequestTimeout(unsigned long ms)      { requestTimeout_ = ms; }
 void RS_JSON::sendRequest(const String& dst, const String& command, const JsonObject& data) {
     ++requestIdCounter_;
 
-    StaticJsonDocument<256> doc;
+    StaticJsonDocument<320> doc;
     doc["dst"]     = dst;
     doc["src"]     = address_;
     doc["type"]    = "req";
@@ -54,7 +54,7 @@ void RS_JSON::sendRequest(const String& dst, const String& command, const JsonOb
 }
 
 void RS_JSON::sendResponse(const String& command, const JsonObject& data) {
-    StaticJsonDocument<256> doc;
+    StaticJsonDocument<320> doc;
     doc["dst"]     = currentRequestSrc_;
     doc["src"]     = address_;
     doc["type"]    = "resp";
@@ -87,9 +87,10 @@ void RS_JSON::listen() {
         }
     }
 
+	unsigned long now = millis();
+
     if (serial_.available()) {
         char c = serial_.read();
-        unsigned long now = millis();
         lastByteMillis = now;
         if (c == '\n' || c == '\r') {
             if (buffer_.length() > 0) {
@@ -112,12 +113,12 @@ void RS_JSON::listen() {
 }
 
 void RS_JSON::ping(const String& dst) {
-    StaticJsonDocument<16> empty;
+    StaticJsonDocument<32> empty;
     sendRequest(dst, "ping", empty.as<JsonObject>());
 }
 
 void RS_JSON::discoverDevices() {
-    StaticJsonDocument<16> empty;
+    StaticJsonDocument<32> empty;
     sendRequest("broadcast", "discover", empty.as<JsonObject>());
 }
 
@@ -142,7 +143,7 @@ void RS_JSON::sendRaw(const String& jsonBody) {
 }
 
 void RS_JSON::sendAck(const String& dst, uint32_t id) {
-    StaticJsonDocument<128> doc;
+    StaticJsonDocument<192> doc;
     doc["dst"]  = dst;
     doc["src"]  = address_;
     doc["type"] = "ack";
@@ -165,7 +166,7 @@ void RS_JSON::processMessage(const String& message) {
         return;
     }
 
-    StaticJsonDocument<256> doc;
+    StaticJsonDocument<320> doc;
     if (deserializeJson(doc, jsonPart) != DeserializationError::Ok) return;
 
     const char* type = doc["type"] | "";

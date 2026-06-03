@@ -124,8 +124,8 @@ private:
     void   endTransmission();
 
     unsigned long lastByteMillis;
-    static constexpr unsigned long DEFAULT_CHAR_TIMEOUT_MS = 15;
-    static constexpr unsigned long MAX_BUFFER_LEN = 250;
+    static constexpr unsigned long DEFAULT_CHAR_TIMEOUT_MS = 25;
+    static constexpr unsigned long MAX_BUFFER_LEN = 320;
 };
 
 #endif // RS_JSON_H

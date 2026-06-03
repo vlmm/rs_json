@@ -3,7 +3,6 @@
 
 #include <Arduino.h>
 #include <ArduinoJson.h>
-#include <functional>
 
 /**
  * RS_JSON — RS485 JSON protocol library (MASTER / SLAVE FSM).
@@ -27,6 +26,7 @@
  *  • SLAVE echoes the request ID unchanged in its response.
  *  • Both sides use the ID for de-duplication (see FSM comments in .cpp).
  */
+
 class RS_JSON {
 public:
     enum Mode { MASTER, SLAVE };
@@ -122,6 +122,10 @@ private:
     void   processMessage(const String& message);
     void   startTransmission();
     void   endTransmission();
+
+    unsigned long lastByteMillis;
+    static constexpr unsigned long DEFAULT_CHAR_TIMEOUT_MS = 15;
+    static constexpr unsigned long MAX_BUFFER_LEN = 250;
 };
 
 #endif // RS_JSON_H

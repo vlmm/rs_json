@@ -87,14 +87,27 @@ void RS_JSON::listen() {
         }
     }
 
-    while (serial_.available()) {
+    if (serial_.available()) {
         char c = serial_.read();
-        if (c != '\n' && c != '\r') {
-            buffer_ += c;
-        } else if (buffer_.length() > 0) {
-            processMessage(buffer_);
+        unsigned long now = millis();
+        lastByteMillis = now;
+        if (c == '\n' || c == '\r') {
+            if (buffer_.length() > 0) {
+                processMessage(buffer_);
+            }
             buffer_ = "";
+        } else {
+            if (buffer_.length() >= MAX_BUFFER_LEN) { // safety limit
+                buffer_ = "";
+            }
+            buffer_ += c;
         }
+        return;
+    }
+
+    if (buffer_.length() > 0 && (now - lastByteMillis > DEFAULT_CHAR_TIMEOUT_MS)) {
+        processMessage(buffer_);
+        buffer_ = "";
     }
 }
 
@@ -239,13 +252,17 @@ void RS_JSON::processMessage(const String& message) {
 }
 
 void RS_JSON::startTransmission() {
-    serial_.flush();
-    digitalWrite(dePin_, HIGH);
-    delay(2);
+    if (useDe_) {
+        serial_.flush();
+        digitalWrite(dePin_, HIGH);
+        delay(2);
+    }
 }
 
 void RS_JSON::endTransmission() {
-    serial_.flush();
-    delay(2);
-    digitalWrite(dePin_, LOW);
+    if (useDe_) {    // half duplex
+        serial_.flush();
+        delay(2);
+        digitalWrite(dePin_, LOW);
+    }
 }

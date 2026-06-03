@@ -1,15 +1,19 @@
 #include "RS_JSON.h"
 
-RS_JSON::RS_JSON(Mode mode, HardwareSerial& serialPort, const String& deviceAddress)
+RS_JSON::RS_JSON(Mode mode, HardwareSerial& serialPort, uint32_t baudRate, const String& deviceAddress)
     : mode(mode), serial(serialPort), address(deviceAddress), useDe(false) {
 }
 
-RS_JSON::RS_JSON(Mode mode, HardwareSerial& serialPort, const String& deviceAddress, uint8_t dePin)
-    : mode(mode), serial(serialPort), address(deviceAddress), dePin(dePin), useDe(true) {
+RS_JSON::RS_JSON(Mode mode, HardwareSerial& serialPort, uint32_t baudRate, const String& deviceAddress, uint8_t dePin)
+    : mode(mode), serial(serialPort), baudRate(baudRate), address(deviceAddress), dePin(dePin), useDe(true) {
 }
 
 void RS_JSON::begin() {
-    // Initialization code can be added here if needed
+    serial.begin(baudRate);
+    if (useDe) {
+        pinMode(dePin, OUTPUT);
+        digitalWrite(dePin, LOW);
+    }
 }
 
 void RS_JSON::flush() {
@@ -60,21 +64,30 @@ void RS_JSON::sendMessage(const String& address, const String& command, const Js
 }
 
 void RS_JSON::listen() {
-    while (serial.available()) {
+    if (serial.available()) {
         char c = serial.read();
-
-        // Accumulate characters in the buffer
-        if ((c != '\n') && (c != '\r')) {
-            buffer += c;
+        lastByteMillis = millis();
+        if (c == '\n' || c == '\r') {
+            if (buffer.length() > 0) processMessage(buffer);
+            buffer = "";
         } else {
-            // End of message
-            processMessage(buffer);
-            buffer = "";  // Clear the buffer
+            buffer += c;
         }
+        return;
+    }
+
+    unsigned long now = millis();
+    if (buffer.length() > 0 && (now - lastByteMillis > DEFAULT_CHAR_TIMEOUT_MS)) {
+        processMessage(buffer);
+        buffer = "";
     }
 }
 
 void RS_JSON::processMessage(const String& message) {
+    if (message.length() < 5) { // min len '{}XX'
+        return;
+    }
+
     // Assume last 2 characters are the checksum
     String jsonPart = message.substring(0, message.length() - 2);
     String checksumPart = message.substring(message.length() - 2);
@@ -134,12 +147,16 @@ void RS_JSON::setCallback(CallbackType callback) {
 
 void RS_JSON::startTransmission() {
     serial.flush();
-    digitalWrite(dePin, HIGH);
-    delay(2);
+    if (useDe) {
+        digitalWrite(dePin, HIGH);
+        delay(2);
+    }
 }
 
 void RS_JSON::endTransmission() {
     serial.flush();
-    delay(2);
-    digitalWrite(dePin, LOW);
+    if (useDe) {
+        delay(2);
+        digitalWrite(dePin, LOW);
+    }
 }

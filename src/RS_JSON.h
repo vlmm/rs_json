@@ -14,9 +14,9 @@ public:
     using CallbackType = std::function<void(const char*)>;
 
     // Constructor: Initializes the communication mode, serial port, baud rate, and device address
-    RS_JSON(Mode mode, HardwareSerial& serialPort, const String& deviceAddress);
+    RS_JSON(Mode mode, HardwareSerial& serialPort, uint32_t baudRate, const String& deviceAddress);
 
-    RS_JSON(Mode mode, HardwareSerial& serialPort, const String& deviceAddress, uint8_t dePin);
+    RS_JSON(Mode mode, HardwareSerial& serialPort, uint32_t baudRate, const String& deviceAddress, uint8_t dePin);
 
     // Initializes serial communication
     void begin();
@@ -39,8 +39,8 @@ public:
 
 private:
     Mode mode;                    // Operating mode (MASTER or SLAVE)
-    HardwareSerial& serial;               // Reference to the serial port
-    int baudRate;                 // Communication baud rate
+    HardwareSerial& serial;       // Reference to the serial port
+    uint32_t baudRate;            // Communication baud rate
     String address;               // Device's own address
     CallbackType callback_;       // Registered callback function
     String buffer;
@@ -55,6 +55,9 @@ private:
 
     void startTransmission();
     void endTransmission();
+
+    unsigned long lastByteMillis;
+    static constexpr unsigned long DEFAULT_CHAR_TIMEOUT_MS = 15;
 };
 
 #endif // RS_JSON_H

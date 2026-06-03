@@ -1,13 +1,9 @@
 #include <Arduino.h>
 #include <ArduinoJson.h>
 #include "RS_JSON.h"
-#include <SoftwareSerial.h>
-
-// Create a software serial port if hardware is not used
-SoftwareSerial softSerial(10, 11); // RX, TX
 
 // Initialize RS_JSON as a slave device
-RS_JSON device(RS_JSON::SLAVE, softSerial, 9600);
+RS_JSON device(RS_JSON::SLAVE, Serial1, 9600, String("Slave1"), PC5);
 
 // Callback function to handle incoming messages
 void handleMessage(const char* jsonMessage) {

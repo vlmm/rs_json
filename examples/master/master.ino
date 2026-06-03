@@ -1,12 +1,9 @@
 #include <Arduino.h>
 #include <ArduinoJson.h>
 #include "RS_JSON.h"
-#include <SoftwareSerial.h>
-
-SoftwareSerial softSerial(10, 11); // RX, TX
 
 // Initialize RS_JSON as the master device
-RS_JSON master(RS_JSON::MASTER, softSerial, 9600);
+RS_JSON master(RS_JSON::MASTER, Serial1, 9600, String("M1"), PC5);
 
 // Callback function for incoming messages
 void handleMessage(const char* jsonMessage) {

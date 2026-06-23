@@ -41,7 +41,7 @@ public:
     RS_JSON(Mode mode, HardwareSerial& serialPort, const String& deviceAddress, uint8_t dePin);
 
     /** Initialises serial communication. */
-    void begin();
+    void begin(String address);
     void flush();
 
     /**

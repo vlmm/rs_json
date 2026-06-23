@@ -23,7 +23,9 @@ RS_JSON::RS_JSON(Mode mode, HardwareSerial& serialPort, const String& deviceAddr
 
 // ── Public API ────────────────────────────────────────────────────────────────
 
-void RS_JSON::begin() {}
+void RS_JSON::begin(String address) {
+	address_ = address;
+}
 
 void RS_JSON::flush() { serial_.flush(); }
 

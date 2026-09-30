@@ -105,7 +105,7 @@ class RSJSON:
         }
         msg_str = json.dumps(msg, separators=(',', ':'))
         checksum = self.calculate_checksum(msg_str)
-        full = f"{msg_str}{checksum:02X}"
+        full = f"{msg_str}{checksum:02X}\n"
         print(full.encode('utf-8'))
         self.serial.write(full.encode('utf-8'))
         self._pending_device = dst
@@ -233,8 +233,13 @@ class RSJSON:
             if msg_type != "resp":
                 return None
 
+            # Accept only the response to the pending request (same ID);
+            # late responses to abandoned requests are ignored and not ACKed
+            if not self._pending_device or msg_id != self._request_id_counter:
+                return None
+
             # Validate the response comes from the device we polled
-            if self._pending_device and src != self._pending_device:
+            if self._pending_device != self.BROADCAST and src != self._pending_device:
                 return None
 
             is_dup = (self._last_received_ids.get(src) == msg_id)

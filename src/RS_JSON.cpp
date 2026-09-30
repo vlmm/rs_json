@@ -213,8 +213,13 @@ void RS_JSON::processMessage(const String& message) {
     if (mode_ == MASTER) {
         if (strcmp(type, "resp") != 0) return;  // MASTER only processes responses
 
+        // Accept only the response to the pending request (same ID);
+        // late responses to abandoned requests are ignored and not ACKed
+        if (pendingDevice_.length() == 0 || id != requestIdCounter_) return;
+
         // Validate the response comes from the device we polled
-        if (pendingDevice_.length() > 0 && strcmp(src, pendingDevice_.c_str()) != 0) return;
+        if (pendingDevice_ != "broadcast" &&
+            strcmp(src, pendingDevice_.c_str()) != 0) return;
 
         String srcStr = String(src);
 
